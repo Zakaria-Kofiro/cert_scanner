@@ -12,7 +12,6 @@ from pprint import pprint
     and returns the data as a JSON object
     If the certificate is invalid, prints an error message and returns an
     equivalent JSON object incidating an invalid cert 
-    
 Args:
     hostname (str): used to connect to host and extract certificate information
 Returns:
@@ -55,22 +54,48 @@ def scan(hostname):
         error_payload = {'valid': False, 'content': None}
         return error_payload
          
-    
     # process all avaliable SSL/TLS certificate data using cert info from both crt.sh and SSL call
     cert_data = process_cert_data(dict_cert, crt_response[1], cert)
+    print_cert(hostname, cert_data)
 
 
 def print_cert(hostname, payload):
     border = "─"*60
 
+    # Certificate information header 
     print("cert_scanner: Python Based SSL/TLS scanner\n")
-    print(f"Scan Results:{border}")
-    issuer = payload[0]['issuer'][1][0][1]
-    print(f"Website:\t {hostname}")
-    print("crt.sh status:\t Certificate found")
-    print(f"Verified by:\t {issuer}\n")
-    print("Certificate Information:\n\n")
     print(border)
+    print(f"Website:\t {hostname}")
+    print("crt.sh status:\t Certificate Found")
+    print(f"Verified by:\t {payload['issuer_name']['organization']}\n\n")
+    print("\t     --   Certificate Information   --\n")
+    print_payload(payload)
+    print(border)
+
+def print_payload(payload):
+    output_string = ""
+    for group, group_items in payload.items():
+        header = " ".join([x[0].upper() + x[1:] for x in group.replace("_", " ").split(" ")])
+        print(f"{header}:")
+        print("─"*30)
+        for key, value in group_items.items():
+            if key == "DNS_name": # handle alt name list seperately 
+                for name in value:
+                    print(f"   DNS Name: {name}")
+                continue
+            if key == "endpoints": # handle CRL endpoints list seperately
+                for endpoint in value:
+                    print(f"   Distribution Point: {endpoint}")
+                continue
+            if key == 'policies':
+                for certificate in value:
+                    print(f"   Policy: {certificate}")
+                continue
+            
+            field = " ".join([x[0].upper() + x[1:] for x in key.replace("_", " ").split(" ")])
+            print(f"   {field}: {value}")
+        print("")
+
 
 
 """ This function uses both cert info from the SSL library and crt.sh to
@@ -90,7 +115,7 @@ Returns:
 """
 def process_cert_data(ssl_cert, crt_response, pem_cert):
     cert_data = {}
-
+    
     # easier to process crt.sh dict for shared cert data
     crt_subject = crt_response['subject']
     crt_issuer = crt_response['issuer']
@@ -100,20 +125,26 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     # Subject Name
     cert_data['subject_name'] = {x.replace("Name", ""):crt_subject[x] for x in crt_subject.keys()} # copy dict keys with some formatting changes 
     cert_data['subject_name']['common_name'] = cert_data['subject_name'].pop('common')
-    cert_data['subject_name']['state_or_province'] = cert_data['subject_name'].pop('stateOrProvince')
-    # Issuer Name
+    if 'stateOrProvince' in cert_data['subject_name']:
+        cert_data['subject_name']['state_or_province'] = cert_data['subject_name'].pop('stateOrProvince')
+    # Issuer Name 
     cert_data['issuer_name'] = {x.replace("Name", ""):crt_issuer[x] for x in crt_issuer.keys()}
     cert_data['issuer_name']['common_name'] = cert_data['issuer_name'].pop('common')
-    # Validity - crt.sh returns timestamps in GMT (strftime returns CST)
+    if 'stateOrProvince' in cert_data['issuer_name']:
+        cert_data['issuer_name']['state_or_province'] = cert_data['issuer_name'].pop('stateOrProvince')
+    cert_data['issuer_name'].pop('id') # id and org unit from crt.sh, not needed for output
+    if 'organizationalUnit' in cert_data:
+        cert_data['issuer_name'].pop('organizationalUnit')
+    # Validity - crt.sh returns timestamps in GMT (strftime returns CST) 
     cert_data['validity'] = {
         'not_before': crt_response['not_before'].strftime("%a, %d %b %Y %H:%M:%S GMT"),
         'not_after': crt_response['not_after'].strftime("%a, %d %b %Y %H:%M:%S GMT")
     }
-    # Subject Alt Names
+    # Subject Alt Names 
     cert_data['subject_alt_names'] = {
         'DNS_name': crt_extensions['alternative_names']
     }
-    # Public Key
+    # Public Key 
     cert_data['public_key_info'] = {x:crt_public_key[x] for x in crt_public_key.keys()}
     cert_data['public_key_info']['key_size'] = cert_data['public_key_info'].pop('size')
     cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256').upper())
@@ -126,8 +157,8 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     }
     # Fingerprints
     cert_data['fingerprints'] = {
-        'sha256': format_hex(crt_response['sha256']),
-        'sha1': format_hex(crt_response['sha1'])
+        'SHA256': format_hex(crt_response['sha256']),
+        'SHA1': format_hex(crt_response['sha1'])
     }
     # Basic Constraints
     cert_data['basic_constraints'] = {
@@ -144,15 +175,18 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     }
     # Subject + Auth Key ID
     cert_data['subject_key_ID'] = {
-        'key_id': format_hex(crt_extensions['subject_key_identifier'])
+        'key_ID': format_hex(crt_extensions['subject_key_identifier'])
     }
     cert_data['authority_key_ID'] = {
-        'key_id': format_hex(crt_extensions['authority_key_identifier'])
+        'key_ID': format_hex(crt_extensions['authority_key_identifier'])
     }
 
     # SSL cert data has complete, easy to use CRL endpoint and AIA data
     # CRL Endpoints: 
-    cert_data['CRL_endpoints'] = ssl_cert['crlDistributionPoints'] 
+    if 'crlDistributionPoints' in ssl_cert:
+        cert_data['CRL_endpoints'] = {
+            'endpoints': ssl_cert['crlDistributionPoints']
+        }
     # Authority Info (AIA)
     cert_data['authority_information_access'] = {
         'OCSP':  ssl_cert['OCSP'][0],
@@ -160,7 +194,7 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     }
     # Certificate Policies
     cert_data['certificate_policies'] = {
-            'policies': [f'Certificate Type ({x})' for x in crt_extensions['certificate_policies']]
+            'policies': crt_extensions['certificate_policies']
     }
     return cert_data
 
@@ -217,4 +251,4 @@ if __name__ == "__main__":
     if (1 == 0):
         scan("www.expired.badssl.com")
     else:
-        scan("www.intuit.com")
+        scan("www.pinterest.com")
