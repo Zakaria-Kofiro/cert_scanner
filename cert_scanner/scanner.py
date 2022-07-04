@@ -1,11 +1,22 @@
 import hashlib
 import socket
 import ssl
+import click
+
 from datetime import datetime
-from pycrtsh import Crtsh
+from pycrtsh import Crtsh, CrtshCertificateNotFound
 
-from pprint import pprint
 
+""" Entrypoint for CLI
+Args:
+    hostname (str): used to connect to host and extract certificate information
+    cert(str): used to validate cert value against crt.sh API
+"""
+@click.command(no_args_is_help=True)
+@click.option('--hostname', '-h', help='Get SSL/TLS certificate for given hostname')
+@click.option('--cert', '-c', default=None, help='Queries cert against crt.sh (id, sha1/sha256, serial)')
+def cert_scanner(hostname, cert):
+    scan(hostname, cert)
 
 """ Attempts to retrieve SSL/TLS certificate data from a given host
     If the certificate is valid, prints all relevant certificate data
@@ -14,12 +25,22 @@ from pprint import pprint
     equivalent JSON object incidating an invalid cert 
 Args:
     hostname (str): used to connect to host and extract certificate information
+    cert(str): used to validate cert value against crt.sh API
 Returns:
-    JSON object: JSON object containing all SSL/TLS certificate data from host
+    hostname option:
+        (cert_data, pem_cert): tuple containing completed SSL/TLS cert dictionary and PEM certificate (used by web app)
+    cert option:
+        prints out cert info and returns (cannot query with hostname with wildcard common names)
 """
-def scan(hostname):
-    addr = (hostname, 443) # setting up hostname payload for query
+def scan(hostname, cert=None):
+    """cert_scanner: Python Based SSL/TLS scanner"""
+
+    if cert:
+        cert_option_set(cert)
+        return
     
+    addr = (hostname, 443) # setting up hostname payload for query
+
     # the ssl python library offers two main methods for certifcate retrival: `SSLSocket.getpeercert` and `ssl.get_server_certificate`
     # `SSLSocket.getpeercert` validates the certificate (raises ssl.SSLCertVerificationError if invalid or returns an empty dict if verify_mode=ssl.CERT_NONE)
     # but `ssl.get_server_certificate` allows users to skip validation to retrieve invalid/outdated PEM certs
@@ -27,93 +48,80 @@ def scan(hostname):
     # to get any valid or invalid certificate SHA fingerprints from hosts to check against crt.sh 
     # before calling `SSLSocket.getpeercert` for extra certificate information if the certificate is valid
     try:
-        cert = ssl.get_server_certificate(addr)
+        pem_cert = ssl.get_server_certificate(addr)
     except socket.gaierror:
         raise SystemExit("error: hostname not provided or not known")
 
-    DER_cert = ssl.PEM_cert_to_DER_cert(cert) # get the DER-encoded form of SSL/TLS cert from host (used to get SHA fingerprints)
+    DER_cert = ssl.PEM_cert_to_DER_cert(pem_cert) # get the DER-encoded form of SSL/TLS cert from host (used to get SHA fingerprints)
     sha256 = hashlib.sha256(DER_cert).hexdigest() # get SHA-256 fingerprint for crt.sh request
-    crt_response = check_cert(sha256) # check SHA256 from cert against crt.sh
+    crt_response = check_cert(sha256) # check SHA256 from cert against crt.sh (using hostname)
 
     # if validated from crt.sh, get extra certificate information using SSL library, else print invalid certificate message
     if crt_response[0]:
-        context = ssl.create_default_context() # create new SSL context with secure default settings
-        context.check_hostname = False
-        context.verify_mode = ssl.CERT_OPTIONAL
-        with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as conn: # set hostname for context and wrap socket
-            try:
-                conn.settimeout(1) # 1 second timeout
-                conn.connect(addr) # connect to host
-                dict_cert = conn.getpeercert() # get dict version of cert for certificate data - method also validates cert, fails if invalid
-            except ssl.SSLCertVerificationError as e:
-                raise SystemExit(e)
-            except socket.gaierror:
-                raise SystemExit("error: hostname not provided or not known")
+        dict_cert = ssl_cert(hostname, addr)
     else:
-        print_invalid_cert(hostname, crt_response) # print invalid certificate message - matching output style
+        print_invalid_cert(hostname, crt_response) 
         error_payload = {'valid': False, 'content': None}
         return error_payload
          
     # process all avaliable SSL/TLS certificate data using cert info from both crt.sh and SSL call
-    cert_data = process_cert_data(dict_cert, crt_response[1], cert)
+    cert_data = process_cert_data(dict_cert, crt_response[1])
     print_cert(hostname, cert_data)
+    return (cert_data, pem_cert)
 
 
-def print_cert(hostname, payload):
-    border = "─"*60
+""" Helper method that queries cert info against crt.sh given it 
+    is one of (crt.sh id, sha1, sha256 or serial number)
+Args:
+    cert (str): cert value used to query crt.sh
+"""
+def cert_option_set(cert):
+    crt_response = check_cert(cert) # check SHA256 from cert against crt.sh (using cert)
+    if crt_response[0]:
+        cert_data = process_cert_data(None, crt_response[1], True)
+        print_cert(crt_response[1]['subject']['commonName'], cert_data)
+    else:
+        print_invalid_cert('Not Specified', crt_response) # print invalid certificate message - matching output style
 
-    # Certificate information header 
-    print("cert_scanner: Python Based SSL/TLS scanner\n")
-    print(border)
-    print(f"Website:\t {hostname}")
-    print("crt.sh status:\t Certificate Found")
-    print(f"Verified by:\t {payload['issuer_name']['organization']}\n\n")
-    print("\t     --   Certificate Information   --\n")
-    print_payload(payload)
-    print(border)
 
-def print_payload(payload):
-    output_string = ""
-    for group, group_items in payload.items():
-        header = " ".join([x[0].upper() + x[1:] for x in group.replace("_", " ").split(" ")])
-        print(f"{header}:")
-        print("─"*30)
-        for key, value in group_items.items():
-            if key == "DNS_name": # handle alt name list seperately 
-                for name in value:
-                    print(f"   DNS Name: {name}")
-                continue
-            if key == "endpoints": # handle CRL endpoints list seperately
-                for endpoint in value:
-                    print(f"   Distribution Point: {endpoint}")
-                continue
-            if key == 'policies':
-                for certificate in value:
-                    print(f"   Policy: {certificate}")
-                continue
-            
-            field = " ".join([x[0].upper() + x[1:] for x in key.replace("_", " ").split(" ")])
-            print(f"   {field}: {value}")
-        print("")
-
+""" Helper method that gets cert info from SSL library
+    which is then used with crt.sh certificate data to 
+    build a comprehensive certificate payload for output
+Args:
+    hostname (str): used to connect to host and extract certificate information
+    addr (tuple): hostname and port payload used for connection call
+Returns:
+    dict_cert: dictionary returned from SSL library with certificate info
+"""
+def ssl_cert(hostname, addr):
+    context = ssl.create_default_context() # create new SSL context with secure default settings
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_OPTIONAL
+    with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as conn: # set hostname for context and wrap socket
+        try:
+            conn.settimeout(1) # 1 second timeout
+            conn.connect(addr) # connect to host
+            dict_cert = conn.getpeercert() # get dict version of cert for certificate data - method also validates cert, fails if invalid
+        except ssl.SSLCertVerificationError as e:
+            raise SystemExit(e)
+        except socket.gaierror:
+            raise SystemExit("error: hostname not provided or not known")
+    return dict_cert
 
 
 """ This function uses both cert info from the SSL library and crt.sh to
-    format the data to allow for easier consumption for output.
+    format the data to allow for easier consumption for output
     It returns a dictionary with SSL/TLS certificate information with:
 
     keys: group heading i.e 'Subject Name', 'Issuer Name' 
     values: group data listed under heading i.e 'Common Name', 'Country'
-
-    It also returns the PEM_CERT which is later used in the web app
 Args:
     ssl_cert (dict): dict containing SSL/TLS cert info from SSL library 
-    crt_response (dict): dict containing SSL/TLS cert info from SSL library 
-    pem_cert (string): PEM-encoded certificate used by the web app for download
+    crt_response (dict): dict containing SSL/TLS cert info from SSL library
 Returns:
-    tuple: tuple containing completed SSL/TLS cert dictionary and PEM certificate
+    cert_data: completed SSL/TLS cert dictionary for output
 """
-def process_cert_data(ssl_cert, crt_response, pem_cert):
+def process_cert_data(ssl_cert, crt_response, cert_option=False):
     cert_data = {}
     
     # easier to process crt.sh dict for shared cert data
@@ -146,9 +154,13 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     }
     # Public Key 
     cert_data['public_key_info'] = {x:crt_public_key[x] for x in crt_public_key.keys()}
-    cert_data['public_key_info']['key_size'] = cert_data['public_key_info'].pop('size')
-    cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256').upper())
-    cert_data['public_key_info']['modulus'] = format_hex(cert_data['public_key_info']['modulus'].upper())
+    if 'key_size' in cert_data['public_key_info']:
+        cert_data['public_key_info']['key_size'] = cert_data['public_key_info'].pop('size')
+    if 'public_key' in cert_data['public_key_info']:
+        cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256').upper()) 
+    if 'modulus' in cert_data['public_key_info']:
+        cert_data['public_key_info']['modulus'] = format_hex(cert_data['public_key_info']['modulus'].upper())
+    
     # Miscellaneous
     cert_data['miscellaneous'] = {
         'serial_number': format_hex(crt_response['serial'].upper()),
@@ -180,18 +192,17 @@ def process_cert_data(ssl_cert, crt_response, pem_cert):
     cert_data['authority_key_ID'] = {
         'key_ID': format_hex(crt_extensions['authority_key_identifier'])
     }
-
-    # SSL cert data has complete, easy to use CRL endpoint and AIA data
+    if not cert_option:
     # CRL Endpoints: 
-    if 'crlDistributionPoints' in ssl_cert:
-        cert_data['CRL_endpoints'] = {
-            'endpoints': ssl_cert['crlDistributionPoints']
+        if 'crlDistributionPoints' in ssl_cert: # SSL cert data has complete, easy to use CRL endpoint and AIA data
+            cert_data['CRL_endpoints'] = {
+                'endpoints': ssl_cert['crlDistributionPoints']
+            }
+        # Authority Info (AIA)
+        cert_data['authority_information_access'] = {
+            'OCSP':  ssl_cert['OCSP'][0],
+            'CA_issuers': ssl_cert['caIssuers'][0]
         }
-    # Authority Info (AIA)
-    cert_data['authority_information_access'] = {
-        'OCSP':  ssl_cert['OCSP'][0],
-        'CA_issuers': ssl_cert['caIssuers'][0]
-    }
     # Certificate Policies
     cert_data['certificate_policies'] = {
             'policies': crt_extensions['certificate_policies']
@@ -226,8 +237,60 @@ def check_cert(sha256):
     try:
         response = c.get(sha256, type='sha256') # check if cert listed in crt.sh
         return (True, response)
-    except Exception as invalid_cert:
+    except IndexError:
+        return (False, 'crt.sh call failed, please try request')
+    except CrtshCertificateNotFound as invalid_cert:
         return (False, invalid_cert)
+
+
+""" Prints header information for the final certificate output 
+Args:
+    hostname (str): used to output host/website name
+    payload (dict): certificate info dict containing all certificate output data
+"""
+def print_cert(hostname, payload):
+    border = "─"*60
+    print("cert_scanner: Python Based SSL/TLS scanner\n") # Certificate information header 
+    print(border)
+    print(f"Website:\t {hostname}")
+    print("crt.sh status:\t Certificate Found")
+    print(f"Verified by:\t {payload['issuer_name']['organization']}\n\n")
+    print("\t     --   Certificate Information   --\n")
+    print_payload(payload)
+    print(border)
+
+
+""" Helper function to print all certificate information from payload
+    Since the payload was formatted for easier output, this method 
+    iterates through the <k,v> pairs of the dictionary and prints most
+    pairs as is with little formatting with some more formatting for 
+    special keys and values (i.e alt names list)
+Args:
+    payload (dict): certificate info dict containing all certificate output data
+"""
+def print_payload(payload):
+    output_string = ""
+    for group, group_items in payload.items():
+        header = " ".join([x[0].upper() + x[1:] for x in group.replace("_", " ").split(" ")])
+        print(f"{header}:")
+        print("─"*30)
+        for key, value in group_items.items():
+            if key == "DNS_name": # handle alt name list seperately 
+                for name in value:
+                    print(f"   DNS Name: {name}")
+                continue
+            if key == "endpoints": # handle CRL endpoints list seperately
+                for endpoint in value:
+                    print(f"   Distribution Point: {endpoint}")
+                continue
+            if key == 'policies':
+                for certificate in value:
+                    print(f"   Policy: {certificate}")
+                continue
+            
+            field = " ".join([x[0].upper() + x[1:] for x in key.replace("_", " ").split(" ")])
+            print(f"   {field}: {value}")
+        print("")
 
 
 """ Helper function to output invalid certificate information
@@ -236,6 +299,7 @@ Args:
     crt_response (string): error message from crt.sh API (from `check_cert`)
 """
 def print_invalid_cert(hostname, crt_response):
+    print("cert_scanner: Python Based SSL/TLS scanner\n")
     border = "─"*60
     print(border)
     print(f"Website:\t {hostname}")
@@ -246,9 +310,4 @@ def print_invalid_cert(hostname, crt_response):
 
 
 if __name__ == "__main__":
-    secure_hosts = ["www.google.com", "www.intuit.com"]
-    bad_hosts = ["www.expired.badssl.com", "www.go.com", "www.baidu.com"]
-    if (1 == 0):
-        scan("www.expired.badssl.com")
-    else:
-        scan("www.pinterest.com")
+    cli()
