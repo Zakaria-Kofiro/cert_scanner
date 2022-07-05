@@ -164,13 +164,13 @@ def process_cert_data(ssl_cert, crt_response, cert_option=False):
     if 'size' in cert_data['public_key_info']:
         cert_data['public_key_info']['key_size'] = cert_data['public_key_info'].pop('size')
     if 'sha256' in cert_data['public_key_info']:
-        cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256').upper()) 
+        cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256')) 
     if 'modulus' in cert_data['public_key_info']:
-        cert_data['public_key_info']['modulus'] = format_hex(cert_data['public_key_info']['modulus'].upper())
+        cert_data['public_key_info']['modulus'] = format_hex(cert_data['public_key_info']['modulus'])
     
     # Miscellaneous
     cert_data['miscellaneous'] = {
-        'serial_number': format_hex(crt_response['serial'].upper()),
+        'serial_number': format_hex(crt_response['serial']),
         'signature_algorithm': crt_response['signature_algorithm'],
         'version': crt_response['version'],
     }
@@ -228,7 +228,7 @@ Returns:
 """
 def format_hex(key):
     string_len = len(key)
-    return ':'.join(key[i:i+2] for i in range(0,string_len,2))
+    return ':'.join(key[i:i+2] for i in range(0,string_len,2)).upper()
 
 
 """ This method checks if a given certificate exists in crt.sh

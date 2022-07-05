@@ -19,4 +19,6 @@ clean:
 	rm -rf .pytest_cache
 	rm -rf cert_scanner/__pycache__
 	rm -rf cert_scanner/.pytest_cache
+	rm -rf tests/__pycache__
 	rm -rf tests/cert_scanner/__pycache__
+	rm -rf tests/cert_scanner/data/__pycache__

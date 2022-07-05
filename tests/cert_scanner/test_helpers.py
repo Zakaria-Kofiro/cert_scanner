@@ -76,7 +76,7 @@ class TestHelpers(unittest.TestCase):
                                                 }, 
                                             'basic_constraints': False
                                         }, 
-                                        'signature': 'c8b265b86e80159e5f560c5d4b9ef849977b7489c4ba' # shorten sig
+                                        'signature': 'c8b265b86e80159e5f560c5d4b9ef849977b7489c4ba' # shorten sig to test format_hex
         } 
         
     # cert_option_set() code path tested in test_scan via cert tests
@@ -129,10 +129,24 @@ class TestHelpers(unittest.TestCase):
         self.assertNotIn('CRL_endpoints', result)
         self.assertNotIn('authority_information_access', result)
 
+    # format_hex()
+    def test_helper_format_hex(self):
+        modulus = self.short_crt_response['publickey']['modulus']
+        modulus_result = scanner.format_hex(modulus)
+        signature = self.short_crt_response['signature']
+        signature_result = scanner.format_hex(signature)
+        random_SHA1 = "f01e15866ce9ed4b1ef613de4a7b5fe6368f2cc7"
+        random_SHA1_result = scanner.format_hex(random_SHA1)
+        random_SHA256 = "aa938635441fa1a8c71606f3b00f64e11c7c2be7bb21e346bacb4fd98a0f39fd"
+        random_SHA256_result = scanner.format_hex(random_SHA256)
+ 
+        self.assertEqual(modulus_result, "00:BF:EF:EE:33:C3:64:7B:EA:43:53:A9:56:A1:90:0B:5D:FA:CD:C0:7E:BF:07")
+        self.assertEqual(signature_result, "C8:B2:65:B8:6E:80:15:9E:5F:56:0C:5D:4B:9E:F8:49:97:7B:74:89:C4:BA")
+        self.assertEqual(random_SHA1_result, "F0:1E:15:86:6C:E9:ED:4B:1E:F6:13:DE:4A:7B:5F:E6:36:8F:2C:C7")
+        self.assertEqual(random_SHA256_result, "AA:93:86:35:44:1F:A1:A8:C7:16:06:F3:B0:0F:64:E1:1C:7C:2B:E7:BB:21:E3:46:BA:CB:4F:D9:8A:0F:39:FD")
 
 
 
-    
 
     
 
