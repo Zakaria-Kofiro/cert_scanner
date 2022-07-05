@@ -9,12 +9,12 @@ from pycrtsh import Crtsh, CrtshCertificateNotFound
 
 """ Entrypoint for CLI
 Args:
-    hostname (str): used to connect to host and extract certificate information
-    cert(str): used to validate cert value against crt.sh API
+    hostname (str): required CLI arg, used to connect to host and extract certificate information
+    cert(str): optional CLI arg, used to validate cert value against crt.sh API
 """
 @click.command(no_args_is_help=True)
 @click.option('--hostname', '-h', help='Get SSL/TLS certificate for given hostname')
-@click.option('--cert', '-c', default=None, help='Queries cert against crt.sh (id, sha1/sha256, serial)')
+@click.option('--cert', '-c', default=None, help='Queries cert against crt.sh (crt.sh id, sha1, or sha256)')
 def cert_scanner(hostname, cert):
     scan(hostname, cert)
 
@@ -24,20 +24,22 @@ def cert_scanner(hostname, cert):
     If the certificate is invalid, prints an error message and returns an
     equivalent JSON object incidating an invalid cert 
 Args:
-    hostname (str): used to connect to host and extract certificate information
-    cert(str): used to validate cert value against crt.sh API
+    hostname (str): used to connect to host and extract certificate information (displays cert info)
+    cert(str): used to validate cert value against crt.sh API (displays cert info)
 Returns:
     hostname option:
-        (cert_data, pem_cert): tuple containing completed SSL/TLS cert dictionary and PEM certificate (used by web app)
+            success_payload: dict payload indicating crt_sh found certificate, with payload and pem_cert (if valid cert)
+            error_payload: dict payload indicating cert not found/error (if invalid cert)
+            
     cert option:
-        prints out cert info and returns (cannot query with hostname with wildcard common names)
+        prints out cert info and returns
 """
 def scan(hostname, cert=None):
     """cert_scanner: Python Based SSL/TLS scanner"""
 
     if cert:
-        cert_option_set(cert)
-        return
+        payload = cert_option_set(cert) # different workflow for checking cert against crt.sh (no hostname)
+        return payload
     
     addr = (hostname, 443) # setting up hostname payload for query
 
@@ -49,7 +51,7 @@ def scan(hostname, cert=None):
     # before calling `SSLSocket.getpeercert` for extra certificate information if the certificate is valid
     try:
         pem_cert = ssl.get_server_certificate(addr)
-    except socket.gaierror:
+    except (socket.gaierror, ConnectionRefusedError, ssl.SSLError):
         raise SystemExit("error: hostname not provided or not known")
 
     DER_cert = ssl.PEM_cert_to_DER_cert(pem_cert) # get the DER-encoded form of SSL/TLS cert from host (used to get SHA fingerprints)
@@ -61,17 +63,18 @@ def scan(hostname, cert=None):
         dict_cert = ssl_cert(hostname, addr)
     else:
         print_invalid_cert(hostname, crt_response) 
-        error_payload = {'valid': False, 'content': None}
+        error_payload = {'valid': False, 'data': None, 'pem_certificate': None}
         return error_payload
          
-    # process all avaliable SSL/TLS certificate data using cert info from both crt.sh and SSL call
+    # process and print all avaliable SSL/TLS certificate data using cert info from both crt.sh and SSL call
     cert_data = process_cert_data(dict_cert, crt_response[1])
     print_cert(hostname, cert_data)
-    return (cert_data, pem_cert)
+    success_payload = {'valid': True, 'data': cert_data, 'pem_certificate': pem_cert}
+    return success_payload
 
 
 """ Helper method that queries cert info against crt.sh given it 
-    is one of (crt.sh id, sha1, sha256 or serial number)
+    is one of (crt.sh id, sha1, or sha256)
 Args:
     cert (str): cert value used to query crt.sh
 """
@@ -80,8 +83,12 @@ def cert_option_set(cert):
     if crt_response[0]:
         cert_data = process_cert_data(None, crt_response[1], True)
         print_cert(crt_response[1]['subject']['commonName'], cert_data)
+        success_payload = {'valid': True, 'data': cert_data, 'pem_certificate': None}
+        return success_payload
     else:
         print_invalid_cert('Not Specified', crt_response) # print invalid certificate message - matching output style
+        error_payload = {'valid': False, 'data': None, 'pem_certificate': None}
+        return error_payload
 
 
 """ Helper method that gets cert info from SSL library
@@ -104,7 +111,7 @@ def ssl_cert(hostname, addr):
             dict_cert = conn.getpeercert() # get dict version of cert for certificate data - method also validates cert, fails if invalid
         except ssl.SSLCertVerificationError as e:
             raise SystemExit(e)
-        except socket.gaierror:
+        except (socket.gaierror, socket.timeout, ssl.SSLError):
             raise SystemExit("error: hostname not provided or not known")
     return dict_cert
 
@@ -192,7 +199,9 @@ def process_cert_data(ssl_cert, crt_response, cert_option=False):
     cert_data['authority_key_ID'] = {
         'key_ID': format_hex(crt_extensions['authority_key_identifier'])
     }
-    if not cert_option:
+    # cert option skips parsing through ssl_cert since it can't make call
+    # to SSL library without hostname (crt.sh returns wildcard common names)
+    if not cert_option: 
     # CRL Endpoints: 
         if 'crlDistributionPoints' in ssl_cert: # SSL cert data has complete, easy to use CRL endpoint and AIA data
             cert_data['CRL_endpoints'] = {
@@ -238,7 +247,7 @@ def check_cert(sha256):
         response = c.get(sha256, type='sha256') # check if cert listed in crt.sh
         return (True, response)
     except IndexError:
-        return (False, 'crt.sh call failed, please try request')
+        return (False, 'crt.sh call failed, please retry request or re-run tests')
     except CrtshCertificateNotFound as invalid_cert:
         return (False, invalid_cert)
 
@@ -310,4 +319,4 @@ def print_invalid_cert(hostname, crt_response):
 
 
 if __name__ == "__main__":
-    cli()
+    cert_scanner()

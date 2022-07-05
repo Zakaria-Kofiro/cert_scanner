@@ -1,5 +1,18 @@
-test:
-	python3 -m pytest tests/ --disable-pytest-warnings
+install: venv
+	source .venv/bin/activate && pip install -r requirements.txt
 
-test-clean:
+venv:
+	test -d .venv || python3 -m venv .venv
+
+# make test: tests the main code, including CLI and helper function
+test:
+	python3 -m pytest tests/ --disable-pytest-warnings --show-capture=no --ignore=tests/cert_scanner/test_scan_data.py 
+
+# make test-data: mainly tests the crt.sh API using list of valid/invalid inputs - takes few minutes to run
+test-data:
+	python3 -m pytest tests/cert_scanner/test_scan_data.py --disable-pytest-warnings --show-capture=no
+
+clean:
+	rm -rf venv
+	rm -rf cert_scanner/__pycache__
 	rm -rf tests/cert_scanner/__pycache__
