@@ -15,6 +15,8 @@ test-data:
 test-all: test test-data
 
 clean:
-	rm -rf venv
+	rm -rf .venv
+	rm -rf .pytest_cache
 	rm -rf cert_scanner/__pycache__
+	rm -rf cert_scanner/.pytest_cache
 	rm -rf tests/cert_scanner/__pycache__
