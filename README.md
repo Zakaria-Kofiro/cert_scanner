@@ -1,5 +1,7 @@
-# cert_scanner
+# <img src="cert_logo.png" width="20"/> cert_scanner 
 Python Based SSL/TLS scanner
+
+
 ## Set Up 
 
 1. Download the code 
