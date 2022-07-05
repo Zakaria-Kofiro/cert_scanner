@@ -60,7 +60,7 @@ def scan(hostname, cert=None):
 
     # if validated from crt.sh, get extra certificate information using SSL library, else print invalid certificate message
     if crt_response[0]:
-        dict_cert = ssl_cert(hostname, addr)
+        dict_cert = ssl_cert(addr)
     else:
         print_invalid_cert(hostname, crt_response) 
         error_payload = {'valid': False, 'data': None, 'pem_certificate': None}
@@ -100,18 +100,18 @@ Args:
 Returns:
     dict_cert: dictionary returned from SSL library with certificate info
 """
-def ssl_cert(hostname, addr):
+def ssl_cert(addr):
     context = ssl.create_default_context() # create new SSL context with secure default settings
     context.check_hostname = False
     context.verify_mode = ssl.CERT_OPTIONAL
-    with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=hostname) as conn: # set hostname for context and wrap socket
+    with context.wrap_socket(socket.socket(socket.AF_INET), server_hostname=addr[0]) as conn: # set hostname for context and wrap socket
         try:
             conn.settimeout(1) # 1 second timeout
             conn.connect(addr) # connect to host
             dict_cert = conn.getpeercert() # get dict version of cert for certificate data - method also validates cert, fails if invalid
         except ssl.SSLCertVerificationError as e:
-            raise SystemExit(e)
-        except (socket.gaierror, socket.timeout, ssl.SSLError):
+            raise SystemExit("SSL: certificate verify failed: certificate has expired")
+        except (socket.gaierror, socket.timeout, ssl.SSLError, ValueError):
             raise SystemExit("error: hostname not provided or not known")
     return dict_cert
 
@@ -130,7 +130,7 @@ Returns:
 """
 def process_cert_data(ssl_cert, crt_response, cert_option=False):
     cert_data = {}
-    
+
     # easier to process crt.sh dict for shared cert data
     crt_subject = crt_response['subject']
     crt_issuer = crt_response['issuer']
@@ -161,9 +161,9 @@ def process_cert_data(ssl_cert, crt_response, cert_option=False):
     }
     # Public Key 
     cert_data['public_key_info'] = {x:crt_public_key[x] for x in crt_public_key.keys()}
-    if 'key_size' in cert_data['public_key_info']:
+    if 'size' in cert_data['public_key_info']:
         cert_data['public_key_info']['key_size'] = cert_data['public_key_info'].pop('size')
-    if 'public_key' in cert_data['public_key_info']:
+    if 'sha256' in cert_data['public_key_info']:
         cert_data['public_key_info']['public_key'] = format_hex(cert_data['public_key_info'].pop('sha256').upper()) 
     if 'modulus' in cert_data['public_key_info']:
         cert_data['public_key_info']['modulus'] = format_hex(cert_data['public_key_info']['modulus'].upper())
