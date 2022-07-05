@@ -27,5 +27,5 @@ Options:
 
 ## Testing
 - `make test-all`: Run all unit tests
-- `make test`: Run all unit tests mainly testing the main code and helper functions, excludes API heavy calls (fast)
+- `make test`: Run unit tests testing the main code and helper functions (fast)
 - `make test-data`: Run tests that test lists of valid/invalid inputs, mostly testing the crt.sh API (slow)
