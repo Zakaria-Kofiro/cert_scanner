@@ -12,6 +12,8 @@ test:
 test-data:
 	python3 -m pytest tests/cert_scanner/test_scan_data.py --disable-pytest-warnings --show-capture=no
 
+test-all: test test-data
+
 clean:
 	rm -rf venv
 	rm -rf cert_scanner/__pycache__
