@@ -1,16 +1,16 @@
 {
-    "hostnames": {
-      "valid_hostnames": [
-        "intuit.com",
-        "amazon.com",
-        "twitter.com",
-        "tumblr.com"
-      ],
-      "invalid_hostnames": [
-        "expired.badssl.com",
-        "myshopify.com",
-        "pendo.io",
-        "recaptcha.net"
-      ]
-    }
+  "hostnames": {
+    "valid_hostnames": [
+      "intuit.com",
+      "amazon.com",
+      "twitter.com",
+      "tumblr.com"
+    ],
+    "invalid_hostnames": [
+      "expired.badssl.com",
+      "myshopify.com",
+      "pendo.io",
+      "recaptcha.net"
+    ]
+  }
 }
