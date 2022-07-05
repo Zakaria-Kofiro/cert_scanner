@@ -14,7 +14,7 @@ Args:
 """
 @click.command(no_args_is_help=True)
 @click.option('--hostname', '-h', help='Get SSL/TLS certificate for given hostname')
-@click.option('--cert', '-c', default=None, help='Queries cert against crt.sh (crt.sh id, sha1, or sha256)')
+@click.option('--cert', '-c', default=None, help='Queries cert against crt.sh (crt.sh id, SHA1, or SHA256)')
 def cert_scanner(hostname, cert):
     scan(hostname, cert)
 
@@ -95,8 +95,7 @@ def cert_option_set(cert):
     which is then used with crt.sh certificate data to 
     build a comprehensive certificate payload for output
 Args:
-    hostname (str): used to connect to host and extract certificate information
-    addr (tuple): hostname and port payload used for connection call
+    addr (tuple): (hostname, port) payload used for connection call
 Returns:
     dict_cert: dictionary returned from SSL library with certificate info
 """
