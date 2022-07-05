@@ -21,8 +21,8 @@ Usage: scanner.py [OPTIONS]
 
 Options:
   -h, --hostname TEXT  Get SSL/TLS certificate for given hostname
-  -c, --cert TEXT      Queries cert against crt.sh (crt.sh id, sha1, or
-                       sha256)
+  -c, --cert TEXT      Queries cert against crt.sh (crt.sh id, SHA1, or
+                       SHA256)
   --help               Show this message and exit.
 ```
 
