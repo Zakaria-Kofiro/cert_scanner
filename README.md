@@ -1,4 +1,6 @@
 # <img src="cert_logo.png" width="22"/> cert_scanner 
+
+<img src="cert_scanner/web_app/static/images/logo.png">
 Python Based SSL/TLS scanner
 
 
