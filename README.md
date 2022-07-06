@@ -2,7 +2,12 @@
 
 <img src="cert_scanner/web_app/static/images/logo.png" width=300>
 
+
+<pre>
 Python Based SSL/TLS scanner
+</pre>
+
+
 
 ## Set Up 
 
