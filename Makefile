@@ -1,5 +1,5 @@
 install: venv
-	source .venv/bin/activate && pip install -r requirements.txt
+	source .venv/bin/activate && pip-compile requirements/requirements.in
 
 venv:
 	test -d .venv || python3 -m venv .venv

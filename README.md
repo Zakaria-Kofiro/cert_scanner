@@ -1,4 +1,4 @@
-# <img src="cert_logo.png" width="20"/> cert_scanner 
+# <img src="cert_logo.png" width="22"/> cert_scanner 
 Python Based SSL/TLS scanner
 
 
