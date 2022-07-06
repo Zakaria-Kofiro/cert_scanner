@@ -26,6 +26,12 @@ Options:
   --help               Show this message and exit.
 ```
 
+## Docker
+### Build Image
+`docker build --tag <tag>`
+
+## Run Image
+`docker run <tag> -h <hostname>`
 
 ## Testing
 - `make test-all`: Run all unit tests
