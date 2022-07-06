@@ -30,7 +30,7 @@ Options:
 ### Build Image
 `docker build --tag <tag>`
 
-## Run Image
+### Run Image
 `docker run <tag> -h <hostname>`
 
 ## Testing
