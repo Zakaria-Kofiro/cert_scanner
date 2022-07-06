@@ -5,7 +5,7 @@ Python Based SSL/TLS scanner
 ## Set Up 
 
 1. Download the code 
-2. Run `make install` and `source .venv/bin/activate` to install dependencies and set up virtual environement
+2. Run `make install` and `source .venv/bin/activate` to install dependencies and set up virtual environment
 3. Run `python cert_scanner/scanner.py` for usage
 
 ```
@@ -35,5 +35,5 @@ Options:
 
 ## Testing
 - `make test-all`: Run all unit tests
-- `make test`: Run unit tests testing the main code and helper functions (fast)
-- `make test-data`: Run tests that test lists of valid/invalid inputs, mostly testing the crt.sh API (slow)
+- `make test`: Run unit tests testing the main code and helper functions 
+- `make test-data`: Run tests on lists of valid/invalid inputs. It's mostly testing the crt.sh API, which takes some time processing the all the inputs
