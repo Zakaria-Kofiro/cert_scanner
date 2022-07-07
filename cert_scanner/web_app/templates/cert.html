@@ -21,14 +21,18 @@
           <table>
             <tbody>
               <tr>
+                {% if query_type == 0 %}
                 <th>Website: {{ headers[0] }}</th>
+                {% else %}
+                <th>Website: Not Specified </th>
+                {% endif %}
                 <th class="verified">Verified by: {{ headers[1] }}</th>
               </tr>
               {% for group_header, group_info in data.items() %}
               <tr>
                 {% if group_header == 'Key Usages' %}
                   {% if group_info[0]['Critical'] == true %}
-                   <td class=critical title="This extension has been marked as critical. If a client does not recognize the extension, the certificate cannot be accepted."> 
+                   <td class=critical title="This extension has been marked as critical. If the client does not recognize the extension, the certificate cannot be accepted."> 
                     {{ group_header }}
                   </td>
                    {% endif %}

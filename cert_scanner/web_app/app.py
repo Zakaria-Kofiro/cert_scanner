@@ -20,7 +20,7 @@ def search():
         if payload['valid']:
             data = scanner.print_payload(payload['data'])
             issuer = payload['data']['issuer_name']['common_name']
-            return render_template('cert.html', headers = [query, issuer, "Certificate Found"], data=data)
+            return render_template('cert.html', query_type=query_type, headers = [query, issuer, "Certificate Found"], data=data)
         else:
             return render_template('error.html', reason=payload['data'])
 
