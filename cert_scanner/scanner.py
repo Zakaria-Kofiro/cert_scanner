@@ -63,7 +63,7 @@ def scan(hostname, cert=None):
         dict_cert = ssl_cert(addr)
     else:
         print_invalid_cert(hostname, crt_response) 
-        error_payload = {'valid': False, 'data': None, 'pem_certificate': None}
+        error_payload = {'valid': False, 'data': f'crt.sh: {crt_response[1]}', 'pem_certificate': None}
         return error_payload
          
     # process and print all avaliable SSL/TLS certificate data using cert info from both crt.sh and SSL call, return success payload
@@ -87,8 +87,29 @@ def cert_option_set(cert):
         return success_payload
     else:
         print_invalid_cert('Not Specified', crt_response) # print invalid certificate message - matching output style
-        error_payload = {'valid': False, 'data': None, 'pem_certificate': None}
+        error_payload = {'valid': False, 'data': f'crt.sh: {crt_response[1]}', 'pem_certificate': None}
         return error_payload
+
+
+""" This method checks if a given certificate exists in crt.sh
+    It uses the crt.sh API and the SHA256 digest from the certificate 
+    for validation, and if it exists, returns a valid flag and crt.sh response
+    If it does not exist, the API sends an error and the method returns 
+    a invalid flag with the crt.sh error response
+Args:
+    sha256 (string): sha256 digest from a DER encoded certificate
+Returns:
+    tuple: (validity_flag, crt_response)
+"""
+def check_cert(sha256):
+    c = Crtsh()
+    try:
+        response = c.get(sha256, type='sha256') # check if cert listed in crt.sh
+        return (True, response)
+    except IndexError:
+        return (False, 'crt.sh call failed, please retry request or re-run tests')
+    except CrtshCertificateNotFound as invalid_cert:
+        return (False, invalid_cert)
 
 
 """ Helper method that gets cert info from SSL library
@@ -231,27 +252,6 @@ def format_hex(value):
     return ':'.join(value[i:i+2] for i in range(0,string_len,2)).upper()
 
 
-""" This method checks if a given certificate exists in crt.sh
-    It uses the crt.sh API and the SHA256 digest from the certificate 
-    for validation, and if it exists, returns a valid flag and crt.sh response
-    If it does not exist, the API sends an error and the method returns 
-    a invalid flag with the crt.sh error response
-Args:
-    sha256 (string): sha256 digest from a DER encoded certificate
-Returns:
-    tuple: (validity_flag, crt_response)
-"""
-def check_cert(sha256):
-    c = Crtsh()
-    try:
-        response = c.get(sha256, type='sha256') # check if cert listed in crt.sh
-        return (True, response)
-    except IndexError:
-        return (False, 'crt.sh call failed, please retry request or re-run tests')
-    except CrtshCertificateNotFound as invalid_cert:
-        return (False, invalid_cert)
-
-
 """ Prints final SSL/TLS certificate output consisting of a header, borders, and formatted payload info
 Args:
     hostname (str): used to output host/website name
@@ -276,29 +276,43 @@ def print_cert(hostname, payload):
     formatting for special keys and values (i.e alt names list)
 Args:
     payload (dict): certificate info dict containing all certificate output data
+Returns:
+    web_app_data (dict): dict containing formatted data for web app data table (used in web_app/app.py)
 """
 def print_payload(payload):
+    web_app_data = {}
     for group, group_items in payload.items():
         header = " ".join([x[0].upper() + x[1:] for x in group.replace("_", " ").split(" ")])
+        web_app_data[header] = []
         print(f"{header}:")
         print("─"*30)
         for key, value in group_items.items():
-            if key == "DNS_name": # handle alt name list seperately 
+            if key == "DNS_name": # handle alt name list seperately
+                web_app_data['Subject Alt Names'] = {'DNS Name': []}
                 for name in value:
                     print(f"   DNS Name: {name}")
+                    web_app_data['Subject Alt Names']['DNS Name'].append(name)
                 continue
             if key == "endpoints": # handle CRL endpoints list seperately
+                web_app_data['CRL Endpoints'] = {'Distribution Point': []}
                 for endpoint in value:
+                    web_app_data['CRL Endpoints']['Distribution Point'].append(endpoint)
                     print(f"   Distribution Point: {endpoint}")
                 continue
             if key == 'policies':
+                web_app_data['Certificate Policies'] = {'Policy': []}
                 for certificate in value:
+                    web_app_data['Certificate Policies']['Policy'].append(certificate)
                     print(f"   Policy: {certificate}")
                 continue
             
             field = " ".join([x[0].upper() + x[1:] for x in key.replace("_", " ").split(" ")])
+
+            web_app_data[header].append({field:value})
             print(f"   {field}: {value}")
         print("")
+
+    return web_app_data
 
 
 """ Helper function to output invalid certificate information

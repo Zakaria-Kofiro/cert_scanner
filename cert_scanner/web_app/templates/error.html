@@ -1,0 +1,31 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="colorlib.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap" rel="stylesheet">
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/cert.css') }}">
+  </head>
+  <body>
+    <div class="logo-row">
+      <a class="navlist" href="/">
+        <img src="../static/images/logo.png" alt="logo" class="logo">
+      </a>
+      </div>
+    <div class="container">
+        <div class="table-1">
+          <table>
+            <tbody>
+              <tr>
+                <th class="error" style="text-align:center"><b> Certificate Not Found! </b></th>
+              </tr>
+              <td style="text-align:center" class=info-group-title> {{reason}} </td>
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </body>
+</html>

@@ -1,0 +1,70 @@
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="author" content="colorlib.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap" rel="stylesheet">
+    <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/cert.css') }}">
+  </head>
+  <body>
+    <div class="logo-row">
+      <a class="navlist" href="/">
+        <img src="../static/images/logo.png" alt="logo" class="logo">
+      </a>
+      </div>
+    <div class="container">
+        <h1>Certificate Information</h1>
+        <div class="table-1">
+          <table>
+            <tbody>
+              <tr>
+                <th>Website: {{ headers[0] }}</th>
+                <th class="verified">Verified by: {{ headers[1] }}</th>
+              </tr>
+              {% for group_header, group_info in data.items() %}
+              <tr>
+                <td class=info-group-title> {{ group_header }} </td>
+
+                {% if group_info is iterable and (group_info is not string and group_info is not mapping) %}
+                  <td class=info-group-subject>
+                  {% for entry in group_info %}
+                    {% for title, item in entry.items() %} 
+                      {% if title == 'Modulus' %}
+                      <b>{{ title }}: </b>
+                      <div style="overflow:auto">
+                        <p>{{item}}</p>
+                      </div>
+                      {% elif title == 'OCSP' or title == 'CA Issuers' %}
+                        <b>{{title}}:</b>  <a href={{item}}> {{item}} </a>  <br>
+                      {%else%}
+                        <b>{{title}}:</b> {{item}} <br>
+                      {% endif %}      
+                    {% endfor %}
+                  {% endfor %}
+                </td>
+                {% else %}
+                <td class=info-group-subject>
+                  {% for title, items in group_info.items() %}
+                    {% if title == 'Distribution Point' %}
+                      {% for item in items %}
+                        <b>{{title}}:</b> <a href={{item}}>{{item}}</a> <br>
+                      {% endfor %}
+                  {% else %} 
+                    {% for item in items %}
+                      <b>{{title}}:</b> &nbsp; {{item}} <br>
+                    {% endfor %}
+                    {% endif %}
+                  {% endfor %}
+                </td>
+                {% endif %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+  </body>
+</html>

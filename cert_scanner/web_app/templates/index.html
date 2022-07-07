@@ -9,23 +9,22 @@
   </head>
   <body>
     <div class="s132">
-      <form>
+      <form method="post">
         <div class="inner-form">
           <div class="input-field first-wrap">
             <div class="input-select">
-              <select data-trigger="" name="choices-single-defaul">
-                <option placeholder="">Category</option>
-                <option>Subject A</option>
-                <option>Subject B</option>
-                <option>Subject C</option>
+              <select id="query" data-trigger="" name="choices-single-defaul">
+                <option value="0" >Hostname</option>
+                <option value="1">Certificate Fingerprint</option>
+                <option value="1">crt.sh ID</option>
               </select>
             </div>
           </div>
           <div class="input-field second-wrap">
-            <input id="search" type="text" placeholder="Enter Keywords" />
+            <input id="search" type="text" name="search"/>
           </div>
           <div class="input-field third-wrap">
-            <button class="btn-search" type="button">Search</button>
+            <button class="btn-search" type="submit">Search</button>
           </div>
         </div>
       </form>

@@ -824,6 +824,21 @@ button {
   -ms-flex-align: center;
       align-items: center;
   font-family: 'Poppins', sans-serif;
+  background: url("../images/index.jpg");
+  background-size: cover;
+  background-position: center center;
+  padding: 15px;
+}
+
+.s133 {
+  min-height: 100vh;
+  display: -ms-flexbox;
+  display: flex;
+  -ms-flex-pack: center;
+      justify-content: center;
+  -ms-flex-align: center;
+      align-items: center;
+  font-family: 'Poppins', sans-serif;
   background: url("../images/background.jpg");
   background-size: cover;
   background-position: center center;
