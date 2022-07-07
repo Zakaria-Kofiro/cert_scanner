@@ -10,7 +10,7 @@
     <link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/cert.css') }}">
   </head>
   <body>
-    <div class="logo-row">
+    <div class="logo-row" title="Back to search">
       <a class="navlist" href="/">
         <img src="../static/images/logo.png" alt="logo" class="logo">
       </a>
@@ -26,8 +26,15 @@
               </tr>
               {% for group_header, group_info in data.items() %}
               <tr>
+                {% if group_header == 'Key Usages' %}
+                  {% if group_info[0]['Critical'] == true %}
+                   <td class=critical title="This extension has been marked as critical. If a client does not recognize the extension, the certificate cannot be accepted."> 
+                    {{ group_header }}
+                  </td>
+                   {% endif %}
+                {%else%}
                 <td class=info-group-title> {{ group_header }} </td>
-
+                {% endif %} 
                 {% if group_info is iterable and (group_info is not string and group_info is not mapping) %}
                   <td class=info-group-subject>
                   {% for entry in group_info %}
@@ -39,6 +46,8 @@
                       </div>
                       {% elif title == 'OCSP' or title == 'CA Issuers' %}
                         <b>{{title}}:</b>  <a href={{item}}> {{item}} </a>  <br>
+                      {% elif title == 'Critical' %}
+                        
                       {%else%}
                         <b>{{title}}:</b> {{item}} <br>
                       {% endif %}      

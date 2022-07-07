@@ -142,3 +142,8 @@ table td:before {
   padding-left: 15rem !important;
   max-width: 800px
 }
+
+.critical {
+  font-weight: 700;
+  color:rgb(196, 25, 25)
+}
