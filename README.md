@@ -33,21 +33,12 @@ Options:
   --help               Show this message and exit.
 ```
 
-## Docker - Local Set Up
+## Docker
 ### Build Image (CLI)
-`docker build -f Dockerfile.cli --tag <tag>`
+`docker build -f Dockerfile.cli --tag <tag> .`
 
 ### Run Image (CLI)
 `docker run <tag> --help`
-
----
-
-### Build Image (Web App)
-`docker build -f Dockerfile.app --tag <tag>`
-
-### Run Image (Web App)
-`docker run <tag>`
-
 
 ## Testing
 - `make test-all`: Run all unit tests
