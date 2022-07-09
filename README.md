@@ -33,6 +33,19 @@ Options:
   --help               Show this message and exit.
 ```
 
+## Web Application 
+
+<img src="webpage.png">
+
+### Run Flask Web App Locally
+```
+cd cert_scanner/web_app/app.py
+python3 -m flask run
+```
+
+
+
+
 ## Docker
 ### Build Image (CLI)
 `docker build -f Dockerfile.cli --tag <tag> .`
