@@ -42,7 +42,13 @@
                 {% if group_info is iterable and (group_info is not string and group_info is not mapping) %}
                   <td class=info-group-subject>
                   {% for entry in group_info %}
-                    {% for title, item in entry.items() %} 
+                    {% for title, item in entry.items() %}
+                      {% if download_link is not none %}
+                        {% if title == 'Version' %}
+                          <b>{{title}}:</b> {{item}} <br>
+                          <b>Download:</b> &nbsp; <a href={{download_link}}> PEM (cert) </a> <br>
+                      {% endif %}
+                    {% endif %}
                       {% if title == 'Modulus' %}
                       <b>{{ title }}: </b>
                       <div style="overflow:auto">
