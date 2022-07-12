@@ -43,12 +43,14 @@
                   <td class=info-group-subject>
                   {% for entry in group_info %}
                     {% for title, item in entry.items() %}
+                    {% if title == 'Version' %}
                       {% if download_link is not none %}
-                        {% if title == 'Version' %}
                           <b>{{title}}:</b> {{item}} <br>
                           <b>Download:</b> &nbsp; <a href={{download_link}}> PEM (cert) </a> <br>
+                          {%else%}
+                          <b>{{title}}:</b> {{item}} <br>
+                        {% endif %}
                       {% endif %}
-                    {% endif %}
                       {% if title == 'Modulus' %}
                       <b>{{ title }}: </b>
                       <div style="overflow:auto">
@@ -59,7 +61,9 @@
                       {% elif title == 'Critical' %}
                         
                       {%else%}
+                      {% if title != 'Version'%}
                         <b>{{title}}:</b> {{item}} <br>
+                      {% endif %}
                       {% endif %}      
                     {% endfor %}
                   {% endfor %}

@@ -107,7 +107,7 @@ def check_cert(sha256):
         response = c.get(sha256, type='sha256') # check if cert listed in crt.sh
         return (True, response)
     except IndexError:
-        return (False, 'crt.sh call failed, please retry request or re-run tests')
+        return (False, 'crt.sh call failed, please retry request')
     except CrtshCertificateNotFound as invalid_cert:
         return (False, invalid_cert)
 

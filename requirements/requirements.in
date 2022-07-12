@@ -2,3 +2,4 @@ pycrtsh
 click
 pytest
 flask
+boto3

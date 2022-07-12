@@ -859,6 +859,7 @@ button {
       justify-content: space-between;
   -ms-flex-align: center;
       align-items: center;
+  margin-top: 75px;
 }
 
 .s132 form .inner-form .input-field {
